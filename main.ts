@@ -9,16 +9,23 @@ import { mkdirSync, readFileSync, writeFileSync } from "node:fs";
 // ever come to buying me dinner. A concrete, universal image; the
 // punchline is the final clause, so the laugh lands at the END; no
 // stock pun, no meta-joke, nothing that needs explaining.
-const LINE =
+const ENTRY_LINE =
   "My cat brought me a dead mouse, which is the closest anyone has ever come to buying me dinner.";
 
 // Gate from the competition rules: 1-200 characters, one line,
 // not blank, no control characters.
+const MIN_CHARS = 1;
 const MAX_CHARS = 200;
-function checkGate(text: string): number {
+
+// Throws on any gate violation. The empty and over-long cases are
+// checked separately so a bad line fails with a precise message.
+function assertEntryGate(text: string): number {
   const chars = [...text].length;
-  if (chars < 1 || chars > MAX_CHARS) {
-    throw new Error(`gate: ${chars} characters, need 1-${MAX_CHARS}`);
+  if (chars < MIN_CHARS) {
+    throw new Error("gate: entry is empty, need at least 1 character");
+  }
+  if (chars > MAX_CHARS) {
+    throw new Error(`gate: ${chars} characters, over the ${MAX_CHARS} limit`);
   }
   if (!text.trim()) throw new Error("gate: entry is only whitespace");
   if (/[\r\n]/.test(text)) throw new Error("gate: entry must be one line");
@@ -29,13 +36,18 @@ function checkGate(text: string): number {
   return chars;
 }
 
-const chars = checkGate(LINE);
-mkdirSync("/output", { recursive: true });
-writeFileSync("/output/entry.txt", LINE, "utf8");
-// Round-trip check: read the file back and re-run the gate on what was
-// actually written, so a truncated or altered write cannot pass silently.
-const written = readFileSync("/output/entry.txt", "utf8");
-if (written !== LINE) throw new Error("round-trip: file differs from LINE");
-checkGate(written);
+// Writes the entry and verifies the round trip, so a truncated or
+// altered write cannot pass silently.
+function writeEntry(line: string): number {
+  const chars = assertEntryGate(line);
+  mkdirSync("/output", { recursive: true });
+  writeFileSync("/output/entry.txt", line, "utf8");
+  const written = readFileSync("/output/entry.txt", "utf8");
+  if (written !== line) throw new Error("round-trip: file differs from ENTRY_LINE");
+  assertEntryGate(written);
+  return chars;
+}
+
+const chars = writeEntry(ENTRY_LINE);
 console.log(`wrote /output/entry.txt (${chars} characters)`);
-console.log(LINE);
+console.log(ENTRY_LINE);
